@@ -145,6 +145,12 @@ export async function sourceDataviewPages(ddbbConfig: LocalSettings, folderPath:
             .where((p: NoteInfoPage) => p.file.folder === folderPath);
         }
         break;
+      case SourceDataTypes.SPECIFIED_FOLDER:
+        {
+          const targetPath = ddbbConfig.source_destination_path || '';
+          pagesResult = DataviewService.getDataviewAPI().pages(`"${targetPath}"`);
+        }
+        break;
       default:
         pagesResult = DataviewService.getDataviewAPI().pages(`"${folderPath}"`);
     }

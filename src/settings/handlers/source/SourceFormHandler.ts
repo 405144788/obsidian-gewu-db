@@ -32,6 +32,9 @@ export class SourceFormHandler extends AbstractSettingsHandler {
             case SourceDataTypes.QUERY_JS:
                 this.queryJsHandler(view, containerEl);
                 break;
+            case SourceDataTypes.SPECIFIED_FOLDER:
+                this.specifiedFolderHandler(view, containerEl);
+                break;
             default:
             //Current folder
         }
@@ -134,6 +137,10 @@ export class SourceFormHandler extends AbstractSettingsHandler {
                         }
                     });
             });
+        destinationFolderSetting(view, containerEl);
+    }
+
+    private specifiedFolderHandler(view: CustomView, containerEl: HTMLElement) {
         destinationFolderSetting(view, containerEl);
     }
 }

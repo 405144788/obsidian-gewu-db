@@ -30,6 +30,7 @@ export default {
   /** SOURCE OPTIONS */
   'current_folder': "当前目录",
   'current_folder_without_subfolders': "当前目录（不包含子目录）",
+  'specified_folder': "指定目录",
   "tag": "标签",
   "outgoing_link": "出链",
   "incoming_link": "反向链接",
