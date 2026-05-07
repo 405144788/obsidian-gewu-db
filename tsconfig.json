@@ -14,6 +14,7 @@
       "importHelpers": true,
       "esModuleInterop": true,
       "allowSyntheticDefaultImports": true,
+      "skipLibCheck": true,
       "experimentalDecorators": true,
       "lib": ["dom", "es6", "scripthost", "es2019", "ES2021","es2022"],
       "jsx": "react"
