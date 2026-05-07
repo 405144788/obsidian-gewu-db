@@ -5,6 +5,6 @@
 		"minAppVersion": "1.1.1",
 		"description": "格物致知，笔记即数据库。Notion-like database for Obsidian. Fork of RafaelGB/obsidian-db-folder with image column and specified folder support.",
 		"author": "405144788",
-		"authorUrl": "https://github.com/405144788/obsidian-db-folder",
+		"authorUrl": "https://github.com/405144788/obsidian-gewu-db",
 		"isDesktopOnly": false
 	}
