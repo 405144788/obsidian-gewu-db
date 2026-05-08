@@ -39,8 +39,7 @@ import customSortingfns, {
   globalDatabaseFilterFn,
 } from "components/reducers/TableFilterFlavours";
 import dbfolderColumnSortingFn from "components/reducers/CustomSortingFn";
-import { useState, useRef } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useState } from "react";
 import {
   obsidianMdLinksOnClickCallback,
   obsidianMdLinksOnMouseOverMenuCallback,
@@ -214,16 +213,6 @@ export function Table(tableData: TableDataType) {
     rowsActions.insertRows();
   }, []);
 
-  // Virtual scrolling setup
-  const tbodyRef = useRef<HTMLDivElement>(null);
-  const rowCount = table.getRowModel().rows.length;
-  const rowVirtualizer = useVirtualizer({
-    count: rowCount,
-    getScrollElement: () => tbodyRef.current,
-    estimateSize: () => cell_size_config === "compact" ? 32 : cell_size_config === "small" ? 40 : 56,
-    overscan: 5,
-  });
-
   return (
     <>
       <HeaderNavBar
@@ -234,51 +223,39 @@ export function Table(tableData: TableDataType) {
           setGlobalFilter: setGlobalFilter,
         }}
       />
-      {/* SCROLL CONTAINER - header sticky inside, body virtualized */}
-      <div
-        ref={tbodyRef}
-        className={c("scroll-container scroll-horizontal")}
-        style={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}
-        onMouseOver={obsidianMdLinksOnMouseOverMenuCallback(view)}
-        onMouseDown={obsidianMdLinksOnClickCallback(stateManager, view, filePath)}
-        onKeyDown={onKeyDownArrowKeys}
-      >
-        {/* Spacer: total virtual height so sticky header works inside scroll */}
-        <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
-          <div
-            className={`${c("table noselect cell_size_" + cell_size_config + (sticky_first_column_config ? " sticky_first_column" : ""))}`}
-            style={{ width: table.getCenterTotalSize() }}
-          >
-            {/* STICKY HEADER */}
-            <div className={c(`thead sticky-top`)} style={{ position: "sticky", top: 0, zIndex: 2 }}>
-              {table.getHeaderGroups().map((headerGroup, headerGroupIndex) => {
-                const headerContext = headerGroup.headers.find(h => h.id === MetadataColumns.ROW_CONTEXT_MENU);
-                const addColumnHeader = headerGroup.headers.find(h => h.id === MetadataColumns.ADD_COLUMN);
-                return (
-                  <div key={`header-group-${headerGroup.id}`} className={`${c("tr header-group")}`}>
-                    <HeaderContextMenuWrapper header={headerContext} style={{ width: "30px" }} />
-                    {headerGroup.headers
-                      .filter(h => ![headerContext.id, addColumnHeader.id].includes(h.id))
-                      .map((header: Header<RowDataType, TableColumn>, headerIndex: number) => (
-                        <TableHeader key={`${header.id}-${headerIndex}`} table={table} header={header} reorderColumn={reorderColumn} headerIndex={headerIndex + 1} />
-                      ))}
-                    <HeaderContextMenuWrapper header={addColumnHeader} style={{ width: "45px" }} />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* VIRTUAL BODY */}
-            <div className={c(`tbody`)}>
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const row = table.getRowModel().rows[virtualRow.index];
-                return (
-                  <div key={`vr-${virtualRow.key}`} style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${virtualRow.start}px)` }}>
-                    <TableRow row={row} table={table} />
-                  </div>
-                );
-              })}
-            </div>
+      {/* SCROLL CONTAINER */}
+      <div className={c("scroll-container scroll-horizontal")}>
+        {/* INIT TABLE */}
+        <div
+          key={`div-table`}
+          className={`${c("table noselect cell_size_" + cell_size_config + (sticky_first_column_config ? " sticky_first_column" : ""))}`}
+          onMouseOver={obsidianMdLinksOnMouseOverMenuCallback(view)}
+          onMouseDown={obsidianMdLinksOnClickCallback(stateManager, view, filePath)}
+          onKeyDown={onKeyDownArrowKeys}
+          style={{ width: table.getCenterTotalSize() }}
+        >
+          <div key={`div-thead-sticky`} className={c(`thead sticky-top`)}>
+            {table.getHeaderGroups().map((headerGroup, headerGroupIndex) => {
+              const headerContext = headerGroup.headers.find(h => h.id === MetadataColumns.ROW_CONTEXT_MENU);
+              const addColumnHeader = headerGroup.headers.find(h => h.id === MetadataColumns.ADD_COLUMN);
+              return (
+                <div key={`header-group-${headerGroup.id}-${headerGroupIndex}`} className={`${c("tr header-group")}`}>
+                  <HeaderContextMenuWrapper header={headerContext} style={{ width: "30px" }} />
+                  {headerGroup.headers
+                    .filter(h => ![headerContext.id, addColumnHeader.id].includes(h.id))
+                    .map((header: Header<RowDataType, TableColumn>, headerIndex: number) => (
+                      <TableHeader key={`${header.id}-${headerIndex}`} table={table} header={header} reorderColumn={reorderColumn} headerIndex={headerIndex + 1} />
+                    ))}
+                  <HeaderContextMenuWrapper header={addColumnHeader} style={{ width: "45px" }} />
+                </div>
+              );
+            })}
+          </div>
+          <div key={`div-tbody`} className={c(`tbody`)}>
+            {table.getRowModel().rows.map((row: Row<RowDataType>) => (
+              <TableRow key={`table-cell-${row.index}`} row={row} table={table} />
+            ))}
+          </div>
           {/* INIT FOOTER */}
           <div key={`div-tfoot`} className={c(`tfoot`)}>
             <div className={c(`tr footer-group`)}>
@@ -326,13 +303,11 @@ export function Table(tableData: TableDataType) {
                     );
                   })
               : null}
-              {/* ENDS FOOTER */}
+            {/* ENDS FOOTER */}
           </div>
           {/* ENDS TABLE */}
         </div>
-        {/* ENDS SPACER */}
-      </div>
-      {/* ENDS SCROLL CONTAINER */}
+        {/* ENDS SCROLL CONTAINER */}
       </div>
       {/* INIT PAGINATION */}
       <PaginationTable table={table} />
