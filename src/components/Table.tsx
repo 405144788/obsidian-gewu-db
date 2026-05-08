@@ -297,7 +297,7 @@ export function Table(tableData: TableDataType) {
                 const row = table.getRowModel().rows[virtualRow.index];
                 return (
                   <div
-                    key={`vr-${virtualRow.key}`}
+                    key={`vr-${virtualRow.key}-${Object.values(columnSizing).join(',')}`}
                     style={{
                       position: "absolute",
                       top: 0,
