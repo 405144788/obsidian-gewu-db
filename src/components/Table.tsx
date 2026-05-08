@@ -216,6 +216,7 @@ export function Table(tableData: TableDataType) {
 
   // Virtual scrolling setup
   const tbodyRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const rowCount = table.getRowModel().rows.length;
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
@@ -237,16 +238,9 @@ export function Table(tableData: TableDataType) {
       {/* TABLE HEADER - outside scroll container for proper alignment */}
       <div
         key={`div-thead`}
+        ref={headerRef}
         className={`${c("thead")} ${c("noselect")}`}
-        style={{
-          overflow: "hidden",
-          width: "100%",
-        }}
-        ref={(el) => {
-          if (el && tbodyRef.current) {
-            el.scrollLeft = tbodyRef.current.scrollLeft;
-          }
-        }}
+        style={{ overflow: "hidden", width: "100%" }}
       >
         <div style={{ width: table.getCenterTotalSize() }}>
           {table.getHeaderGroups().map((headerGroup, headerGroupIndex) => {
@@ -278,10 +272,10 @@ export function Table(tableData: TableDataType) {
         ref={tbodyRef}
         className={c("scroll-container scroll-horizontal")}
         style={{ maxHeight: "calc(100vh - 250px)", overflow: "auto" }}
-        onScroll={(e) => {
-          // Sync header horizontal scroll with body
-          const headerEl = e.currentTarget.previousElementSibling as HTMLDivElement;
-          if (headerEl) headerEl.scrollLeft = e.currentTarget.scrollLeft;
+        onScroll={() => {
+          if (headerRef.current && tbodyRef.current) {
+            headerRef.current.scrollLeft = tbodyRef.current.scrollLeft;
+          }
         }}
         onMouseOver={obsidianMdLinksOnMouseOverMenuCallback(view)}
         onMouseDown={obsidianMdLinksOnClickCallback(stateManager, view, filePath)}
