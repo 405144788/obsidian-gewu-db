@@ -4,7 +4,6 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getExpandedRowModel,
-  getPaginationRowModel,
   ColumnDef,
   ColumnOrderState,
   Table,
@@ -46,7 +45,6 @@ import {
 } from "components/obsidianArq/markdownLinks";
 import HeaderContextMenuWrapper from "components/contextMenu/HeaderContextMenuWrapper";
 import TableActions from "components/tableActions/TableActions";
-import PaginationTable from "components/navbar/PaginationTable";
 import onKeyDownArrowKeys from "./behavior/ArrowKeysNavigation";
 
 const defaultColumn: Partial<ColumnDef<RowDataType>> = {
@@ -199,7 +197,6 @@ export function Table(tableData: TableDataType) {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
@@ -309,9 +306,6 @@ export function Table(tableData: TableDataType) {
         </div>
         {/* ENDS SCROLL CONTAINER */}
       </div>
-      {/* INIT PAGINATION */}
-      <PaginationTable table={table} />
-      {/* ENDS PAGINATION */}
       {/* INIT DEBUG INFO */}
       {globalConfig.enable_show_state && (
         <pre>

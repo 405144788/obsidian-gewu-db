@@ -25,7 +25,7 @@ export default function TableRow(tableRowProps: TableRowProps) {
   return (
     <>
       {/** INIT TABLE ROW */}
-      <div key={`cell-tr-${row.id}`} className={`${c(rowClasses.join(" "))}`}>
+      <div key={`cell-tr-${row.id}`} className={`${c(rowClasses.join(" "))}`} style={{ contentVisibility: "auto", containIntrinsicSize: "auto 32px" }}>
         {row
           .getVisibleCells()
           .map((cell: Cell<RowDataType, Literal>, cellIndex: number) => {
