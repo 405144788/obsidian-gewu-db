@@ -235,7 +235,7 @@ export function Table(tableData: TableDataType) {
         }}
       />
       {/* INIT SCROLL PANE */}
-      <div ref={tbodyRef} className={c("scroll-container scroll-horizontal")} style={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}>
+      <div ref={tbodyRef} className={c("scroll-container scroll-horizontal")} style={{ maxHeight: "calc(100vh - 200px)", overflow: "auto", scrollbarGutter: "stable" }}>
         {/* INIT TABLE */}
         <div
           key={`div-table`}
