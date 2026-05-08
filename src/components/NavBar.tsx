@@ -21,6 +21,9 @@ export function NavBar(navBarProps: NavBarProps) {
   const isNavbarEnabled = tableState.configState(
     (state) => state.ephimeral.enable_navbar
   );
+  // Subscribe to Zustand row count so status bar updates when data loads
+  const totalRows = tableState.data((state) => state.rows.length);
+  const filteredRows = table.getFilteredRowModel().rows.length;
 
   const updateBar = () => {
     if (!view.plugin.statusBarItem) {
@@ -28,16 +31,14 @@ export function NavBar(navBarProps: NavBarProps) {
     }
     view.plugin.statusBarItem.replaceChildren();
     view.plugin.statusBarItem.createEl("span", {
-      text: `${table.getFilteredRowModel().rows.length}/${
-        table.getCoreRowModel().rows.length
-      } '${view.diskConfig.yaml.name}'`,
+      text: `${filteredRows}/${totalRows} '${view.diskConfig.yaml.name}'`,
     });
   };
 
-  // Bar status control
+  // Bar status control — update when row count changes
   useEffect(() => {
     updateBar();
-  }, [table.getFilteredRowModel().rows.length]);
+  }, [totalRows]);
 
   useEffect(() => {
     const updateBarAfterActive = (e: string) => {
