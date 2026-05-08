@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { ParseService } from "services/ParseService";
 
-const NumberCell = React.memo(function NumberCell(props: CellComponentProps) {
+const NumberCell = function NumberCell(props: CellComponentProps) {
   const { defaultCell } = props;
   const { row, column, table } = defaultCell;
   const { tableState } = table.options.meta;
@@ -86,6 +86,6 @@ const NumberCell = React.memo(function NumberCell(props: CellComponentProps) {
       {isNaN(numberCell) ? "" : numberCell}
     </span>
   );
-});
+}
 
 export default NumberCell;

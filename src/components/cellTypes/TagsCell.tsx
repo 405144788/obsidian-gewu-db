@@ -17,7 +17,7 @@ import { satinizedColumnOption } from "helpers/FileManagement";
 import ClickAwayListener from "@mui/material/ClickAwayListener";
 import { Db } from "services/CoreService";
 
-const TagsCell = React.memo(function TagsCell(tagsProps: CellComponentProps) {
+const TagsCell = function TagsCell(tagsProps: CellComponentProps) {
   const { defaultCell } = tagsProps;
   const { row, column, table } = defaultCell;
   const { tableState, view } = table.options.meta;
@@ -139,6 +139,6 @@ const TagsCell = React.memo(function TagsCell(tagsProps: CellComponentProps) {
       )}
     </>
   );
-});
+}
 
 export default TagsCell;

@@ -16,7 +16,7 @@ import { ParseService } from "services/ParseService";
 import { OptionSource } from "helpers/Constants";
 import { Db } from "services/CoreService";
 
-const SelectCell = React.memo(function SelectCell(popperProps: CellComponentProps) {
+const SelectCell = function SelectCell(popperProps: CellComponentProps) {
   const { defaultCell } = popperProps;
   const { row, column, table } = defaultCell;
   const { tableState, view } = table.options.meta;
@@ -125,6 +125,6 @@ const SelectCell = React.memo(function SelectCell(popperProps: CellComponentProp
       )}
     </>
   );
-});
+}
 
 export default SelectCell;

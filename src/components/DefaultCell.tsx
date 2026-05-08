@@ -21,7 +21,7 @@ import { CellContext } from "@tanstack/react-table";
 import { Literal } from "obsidian-dataview";
 import MetadataTagsCell from "./cellTypes/MetadataTagsCell";
 
-const DefaultCell = React.memo(function DefaultCell(
+const DefaultCell = function DefaultCell(
   defaultCell: CellContext<RowDataType, Literal>
 ) {
   const { column } = defaultCell;
@@ -67,6 +67,6 @@ const DefaultCell = React.memo(function DefaultCell(
       LOGGER.warn(`Unknown input type: ${input}`);
   }
   return <span></span>;
-});
+}
 
 export default DefaultCell;

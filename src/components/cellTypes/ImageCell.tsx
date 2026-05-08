@@ -2,7 +2,7 @@ import React from "react";
 import { TFile } from "obsidian";
 import { CellComponentProps } from "cdm/ComponentsModel";
 
-const ImageCell = React.memo(function ImageCell(props: CellComponentProps) {
+const ImageCell = function ImageCell(props: CellComponentProps) {
   const { defaultCell } = props;
   const { table } = defaultCell;
   const view = table.options.meta.view;
@@ -31,6 +31,6 @@ const ImageCell = React.memo(function ImageCell(props: CellComponentProps) {
   }
 
   return <span style={{ color: "var(--text-error)", fontSize: "12px" }}>路径无效</span>;
-});
+}
 
 export default ImageCell;

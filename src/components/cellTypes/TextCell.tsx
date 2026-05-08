@@ -8,7 +8,7 @@ import { ParseService } from "services/ParseService";
 import { InputType, SUGGESTER_REGEX } from "helpers/Constants";
 import { MarkdownService } from "services/MarkdownRenderService";
 
-const TextCell = React.memo(function TextCell(props: CellComponentProps) {
+const TextCell = function TextCell(props: CellComponentProps) {
   const { defaultCell } = props;
   const { column, table, row } = defaultCell;
   const { tableState } = table.options.meta;
@@ -95,6 +95,6 @@ const TextCell = React.memo(function TextCell(props: CellComponentProps) {
       tabIndex={0}
     />
   );
-});
+}
 
 export default TextCell;
