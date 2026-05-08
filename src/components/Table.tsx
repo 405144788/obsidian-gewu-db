@@ -235,7 +235,7 @@ export function Table(tableData: TableDataType) {
         }}
       />
       {/* INIT SCROLL PANE */}
-      <div className={c("scroll-container scroll-horizontal")}>
+      <div ref={tbodyRef} className={c("scroll-container scroll-horizontal")} style={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}>
         {/* INIT TABLE */}
         <div
           key={`div-table`}
@@ -316,7 +316,7 @@ export function Table(tableData: TableDataType) {
             {/* ENDS HEADERS */}
           </div>
           {/* INIT BODY - Virtualized */}
-          <div key={`div-tbody`} ref={tbodyRef} className={c(`tbody`)} style={{ overflow: "auto" }}>
+          <div key={`div-tbody`} className={c(`tbody`)}>
             <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const row = table.getRowModel().rows[virtualRow.index];
