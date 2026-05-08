@@ -1,0 +1,27 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run release
+      - run: cp dist/main.js .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gewu-db
+          path: |
+            main.js
+            manifest.json
+            styles.css
