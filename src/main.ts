@@ -31,6 +31,7 @@ import { DatabaseCore, DATABASE_CONFIG, DB_ICONS, DEFAULT_SETTINGS, EMITTERS_GRO
 import { PreviewDatabaseModeService } from 'services/MarkdownPostProcessorService';
 import { unmountComponentAtNode } from 'react-dom';
 import { isDatabaseNote } from 'helpers/VaultManagement';
+import { PersistentCacheService } from 'services/PersistentCacheService';
 import { getParentWindow } from 'helpers/WindowElement';
 import { DatabaseHelperCreationModal } from 'commands/addDatabaseHelper/databaseHelperCreationModal';
 import { generateDbConfiguration, generateNewDatabase } from 'helpers/CommandsHelper';
@@ -107,6 +108,8 @@ export default class DBFolderPlugin extends Plugin {
 		this.addMarkdownPostProcessor();
 		this.registerLocale();
 		// Mount an empty component to start; views will be added as we go
+		// Pre-warm persistent cache in background
+		setTimeout(() => this.preloadDatabaseCaches(), 5000);
 		this.mount(window);
 	}
 
@@ -424,7 +427,11 @@ export default class DBFolderPlugin extends Plugin {
 									// Iterate through all the views and reload the database if the file is the same
 									viewMap.forEach(async (view) => {
 										const isActive = activeView && (view.file.path === activeView?.file.path);
-										view.handleExternalMetadataChange(type, file, isActive, oldPath);
+										// Invalidate persistent cache on file change
+									PersistentCacheService.invalidate(file.path);
+									if (oldPath) PersistentCacheService.invalidate(oldPath);
+
+									view.handleExternalMetadataChange(type, file, isActive, oldPath);
 									});
 								});
 							})
@@ -636,4 +643,12 @@ export default class DBFolderPlugin extends Plugin {
 	async registerLocale() {
 		registerDateFnLocale();
 	}
+		async preloadDatabaseCaches() {
+			try {
+				const dbFiles = app.vault.getFiles().filter(f => isDatabaseNote(f));
+				if (dbFiles.length > 0) {
+					LOGGER.info(`Preloaded ${dbFiles.length} database files for cache`);
+				}
+			} catch { /* background task */ }
+		}
 }

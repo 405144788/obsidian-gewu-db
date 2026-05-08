@@ -3,6 +3,7 @@ import { Notice, TFile, parseYaml, TAbstractFile } from 'obsidian';
 import { LOGGER } from "services/Logger";
 import NoteInfo from 'services/NoteInfo';
 import { RowCacheService } from 'services/RowCacheService';
+import { PersistentCacheService } from 'services/PersistentCacheService';
 import { DatabaseCore, SourceDataTypes, MetadataColumns } from "helpers/Constants";
 import { generateDataviewTableQuery } from 'helpers/QueryHelper';
 import { DataviewService } from 'services/DataviewService';
@@ -78,6 +79,7 @@ export function getNormalizedPath(path: string): NormalizedPath {
  */
 async function adapterFolderFast(dbFile: TFile, columns: TableColumn[], ddbbConfig: LocalSettings, filters: FilterSettings, folderPath: string, includeSubfolders: boolean): Promise<Array<RowDataType>> {
   RowCacheService.init(dbFile.path);
+  PersistentCacheService.init(dbFile.path, columns);
   const rows: Array<RowDataType> = [];
 
   // Get files directly from vault
@@ -92,22 +94,33 @@ async function adapterFolderFast(dbFile: TFile, columns: TableColumn[], ddbbConf
 
   if (targetFiles.length === 0) return rows;
 
-  // Use app.metadataCache frontmatter (pre-parsed, in-memory) — no disk I/O needed
+  // Bulk preload IndexedDB cache for this database
+  const persistentCache = await PersistentCacheService.loadAll(PersistentCacheService.getKey(""));
+
+  let missedCount = 0;
   for (const file of targetFiles) {
     const mtime = file.stat.mtime;
 
-    // Check cache
-    const cached = RowCacheService.get(file.path, mtime);
-    if (cached) {
-      rows.push(cached);
+    // L1: In-memory cache
+    const memCached = RowCacheService.get(file.path, mtime);
+    if (memCached) {
+      rows.push(memCached);
       continue;
     }
 
-    // Get frontmatter from Obsidian's own metadata cache (already parsed)
+    // L2: Persistent IndexedDB cache
+    const persistentCached = persistentCache.get(file.path);
+    if (persistentCached && persistentCached.mtime === mtime) {
+      RowCacheService.set(file.path, mtime, persistentCached.row);
+      rows.push(persistentCached.row);
+      continue;
+    }
+
+    // Cache miss — compute from metadataCache (in-memory, no disk I/O)
+    missedCount++;
     const fileCache = app.metadataCache.getFileCache(file);
     const fm: Record<string, any> = (fileCache?.frontmatter as Record<string, any>) || {};
 
-    // Build RowDataType
     const row: RowDataType = {
       __note__: undefined,
       [MetadataColumns.FILE]: app.metadataCache.fileToLinktext(file, file.path, false),
@@ -119,7 +132,6 @@ async function adapterFolderFast(dbFile: TFile, columns: TableColumn[], ddbbConf
       [MetadataColumns.TAGS]: [],
     };
 
-    // Map column keys from frontmatter
     for (const col of columns) {
       if (fm[col.key] !== undefined) {
         row[col.key] = fm[col.key];
@@ -127,7 +139,12 @@ async function adapterFolderFast(dbFile: TFile, columns: TableColumn[], ddbbConf
     }
 
     RowCacheService.set(file.path, mtime, row);
+    PersistentCacheService.set(file.path, mtime, row); // fire-and-forget
     rows.push(row);
+  }
+
+  if (missedCount > 0) {
+    LOGGER.debug(`adapterFolderFast: ${rows.length} rows, ${missedCount} cache misses, ${rows.length - missedCount} from cache`);
   }
 
   return rows;
