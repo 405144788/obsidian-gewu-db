@@ -7,26 +7,21 @@ export default function ShortcutsAction(actionProps: TableActionProps) {
   const { view } = table.options.meta;
 
   /**
-   * Keyboard shortcuts — no pagination, use scroll-based navigation
+   * Keyboard shortcuts
    */
   useEffect(() => {
-    const scrollBy = (delta: number) => {
-      const container = view.containerEl.querySelector(".scroll-horizontal") as HTMLElement | null;
-      if (container) {
-        container.scrollBy({ top: delta, behavior: "smooth" });
-      }
-    };
-
+    // NEXT PAGE
     const goNextPage = (e: string) => {
       if (e === EMITTERS_SHORTCUT.GO_NEXT_PAGE) {
-        scrollBy(window.innerHeight * 0.8);
+        table.getCanNextPage() && table.nextPage();
       }
     };
     view.emitter.on(EMITTERS_GROUPS.SHORTCUT, goNextPage);
 
+    // PREVIOUS PAGE
     const goPreviousPage = (e: string) => {
       if (e === EMITTERS_SHORTCUT.GO_PREVIOUS_PAGE) {
-        scrollBy(-window.innerHeight * 0.8);
+        table.getCanPreviousPage() && table.previousPage();
       }
     };
     view.emitter.on(EMITTERS_GROUPS.SHORTCUT, goPreviousPage);

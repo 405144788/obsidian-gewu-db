@@ -21,90 +21,52 @@ import { CellContext } from "@tanstack/react-table";
 import { Literal } from "obsidian-dataview";
 import MetadataTagsCell from "./cellTypes/MetadataTagsCell";
 
-export default function DefaultCell(
+const DefaultCell = React.memo(function DefaultCell(
   defaultCell: CellContext<RowDataType, Literal>
 ) {
   const { column } = defaultCell;
-  /** Type of cell */
   const input = (column.columnDef as TableColumn).input;
 
-  /** states for selector option  */
-  function getCellElement() {
-    switch (input) {
-      /** Plain text option */
-      case InputType.TEXT:
-        return <TextCell defaultCell={defaultCell} />;
-
-      /** Number option */
-      case InputType.NUMBER:
-        return <NumberCell defaultCell={defaultCell} />;
-
-      /** Markdown option */
-      case InputType.MARKDOWN:
-        return <MarkdownCell defaultCell={defaultCell} />;
-
-      /** Calendar option */
-      case InputType.CALENDAR:
-        return <CalendarCell defaultCell={defaultCell} />;
-
-      /** Calendar with time option */
-      case InputType.CALENDAR_TIME:
-        return <CalendarTimeCell defaultCell={defaultCell} />;
-
-      /** Metadata options related with date/datetime */
-      case InputType.METATADA_TIME:
-        return <MetadataTimeCell defaultCell={defaultCell} />;
-
-      /** Selector option */
-      case InputType.SELECT:
-        return <SelectCell defaultCell={defaultCell} />;
-
-      /** Tags option */
-      case InputType.TAGS:
-        return <TagsCell defaultCell={defaultCell} />;
-
-      /** Tasks option */
-      case InputType.TASK:
-        return <TaskCell defaultCell={defaultCell} />;
-
-      /** InOut links option */
-      case InputType.INLINKS:
-      case InputType.OUTLINKS:
-        return <InOutLinksCell defaultCell={defaultCell} />;
-
-      /** Metadata file tags */
-      case InputType.METADATA_TAGS:
-        return <MetadataTagsCell defaultCell={defaultCell} />;
-
-      /** Checkbox option */
-      case InputType.CHECKBOX:
-        return <CheckboxCell defaultCell={defaultCell} />;
-
-      /** Formula option */
-      case InputType.FORMULA:
-        return <FormulaCell defaultCell={defaultCell} />;
-
-      /** Relation with another ddbb */
-      case InputType.RELATION:
-        return <RelationCell defaultCell={defaultCell} />;
-
-      /** Rollup info of a relation */
-      case InputType.ROLLUP:
-        return <RollupCell defaultCell={defaultCell} />;
-
-      /** Image column */
-      case InputType.IMAGE:
-        return <ImageCell defaultCell={defaultCell} />;
-
-      /** New column option */
-      case InputType.NEW_COLUMN:
-        // Do nothing
-        break;
-      /** Default option */
-      default:
-        LOGGER.warn(`Unknown input type: ${input}`);
-    }
-    return <span></span>;
+  switch (input) {
+    case InputType.TEXT:
+      return <TextCell defaultCell={defaultCell} />;
+    case InputType.NUMBER:
+      return <NumberCell defaultCell={defaultCell} />;
+    case InputType.MARKDOWN:
+      return <MarkdownCell defaultCell={defaultCell} />;
+    case InputType.CALENDAR:
+      return <CalendarCell defaultCell={defaultCell} />;
+    case InputType.CALENDAR_TIME:
+      return <CalendarTimeCell defaultCell={defaultCell} />;
+    case InputType.METATADA_TIME:
+      return <MetadataTimeCell defaultCell={defaultCell} />;
+    case InputType.SELECT:
+      return <SelectCell defaultCell={defaultCell} />;
+    case InputType.TAGS:
+      return <TagsCell defaultCell={defaultCell} />;
+    case InputType.TASK:
+      return <TaskCell defaultCell={defaultCell} />;
+    case InputType.INLINKS:
+    case InputType.OUTLINKS:
+      return <InOutLinksCell defaultCell={defaultCell} />;
+    case InputType.METADATA_TAGS:
+      return <MetadataTagsCell defaultCell={defaultCell} />;
+    case InputType.CHECKBOX:
+      return <CheckboxCell defaultCell={defaultCell} />;
+    case InputType.FORMULA:
+      return <FormulaCell defaultCell={defaultCell} />;
+    case InputType.RELATION:
+      return <RelationCell defaultCell={defaultCell} />;
+    case InputType.ROLLUP:
+      return <RollupCell defaultCell={defaultCell} />;
+    case InputType.IMAGE:
+      return <ImageCell defaultCell={defaultCell} />;
+    case InputType.NEW_COLUMN:
+      break;
+    default:
+      LOGGER.warn(`Unknown input type: ${input}`);
   }
-  return getCellElement();
-}
+  return <span></span>;
+});
+
+export default DefaultCell;

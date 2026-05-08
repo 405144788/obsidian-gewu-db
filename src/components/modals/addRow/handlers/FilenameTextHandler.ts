@@ -22,7 +22,7 @@ export class FilenameTextHandler extends AbstractHandlerClass<AddRowModalHandler
                 );
             newFilename = "";
             (activeDocument.getElementById(this.textElId) as HTMLInputElement).value = "";
-            // No pagination — all rows rendered, new row appears in-place
+            table.setPageIndex(table.getPageCount() - 1);
 
         }
 

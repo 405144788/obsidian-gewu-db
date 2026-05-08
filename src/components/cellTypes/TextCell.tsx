@@ -8,49 +8,29 @@ import { ParseService } from "services/ParseService";
 import { InputType, SUGGESTER_REGEX } from "helpers/Constants";
 import { MarkdownService } from "services/MarkdownRenderService";
 
-const TextCell = (props: CellComponentProps) => {
+const TextCell = React.memo(function TextCell(props: CellComponentProps) {
   const { defaultCell } = props;
   const { column, table, row } = defaultCell;
   const { tableState } = table.options.meta;
   const tableColumn = column.columnDef as TableColumn;
-  const textRow = tableState.data((state) => state.rows[row.index]);
 
-  const configInfo = tableState.configState((state) => state.info);
+  // Read value directly from TanStack — no Zustand subscription needed for display
+  const textCell = (defaultCell.getValue() ?? "") as string;
 
-  const columnsInfo = tableState.columns((state) => state.info);
-
-  const dataActions = tableState.data((state) => state.actions);
-
-  const textCell = tableState.data(
-    (state) =>
-      ParseService.parseRowToCell(
-        state.rows[row.index],
-        tableColumn,
-        InputType.TEXT,
-        configInfo.getLocalSettings()
-      ) as string
-  );
-
-  /** Ref to cell container */
-  const containerCellRef = useRef<HTMLDivElement>();
+  const containerCellRef = useRef<HTMLDivElement>(null);
   const [dirtyCell, setDirtyCell] = useState(false);
 
-  /**
-   * Render markdown content of Obsidian on load
-   */
+  // Render markdown on load / value change
   useEffect(() => {
-    if (dirtyCell || (!containerCellRef.current && !textCell)) {
-      // End useEffect
-      return;
+    if (!dirtyCell && containerCellRef.current && textCell) {
+      MarkdownService.renderMarkdown(
+        defaultCell,
+        textCell,
+        containerCellRef.current,
+        5,
+        true
+      );
     }
-
-    MarkdownService.renderMarkdown(
-      defaultCell,
-      textCell,
-      containerCellRef.current,
-      5,
-      true
-    );
   }, [dirtyCell, textCell]);
 
   const handleEditableOnclick = () => {
@@ -59,7 +39,13 @@ const TextCell = (props: CellComponentProps) => {
 
   const persistChange = async (changedValue: string) => {
     changedValue = changedValue.trim();
-    if (changedValue !== undefined && changedValue !== textCell) {
+    if (changedValue !== textCell) {
+      const store = tableState.data.getState();
+      const configInfo = tableState.configState.getState().info;
+      const columnsInfo = tableState.columns.getState().info;
+      const dataActions = tableState.data.getState().actions;
+      const textRow = tableState.data.getState().rows[row.index];
+
       const newCell = ParseService.parseRowToLiteral(
         textRow,
         tableColumn,
@@ -77,6 +63,9 @@ const TextCell = (props: CellComponentProps) => {
     setDirtyCell(false);
   };
 
+  // Read config once for alignment classname — no subscription
+  const localSettings = tableState.configState.getState().info.getLocalSettings();
+
   return dirtyCell ? (
     <EditorCell
       defaultCell={defaultCell}
@@ -87,7 +76,6 @@ const TextCell = (props: CellComponentProps) => {
     <span
       ref={containerCellRef}
       onDoubleClick={handleEditableOnclick}
-      // On enter key press
       onKeyDown={(e) => {
         if (SUGGESTER_REGEX.CELL_VALID_KEYDOWN.test(e.key)) {
           handleEditableOnclick();
@@ -100,13 +88,13 @@ const TextCell = (props: CellComponentProps) => {
       className={c(
         getAlignmentClassname(
           tableColumn.config,
-          configInfo.getLocalSettings(),
+          localSettings,
           ["tabIndex"]
         )
       )}
       tabIndex={0}
     />
   );
-};
+});
 
 export default TextCell;

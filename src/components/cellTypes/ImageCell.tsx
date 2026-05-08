@@ -1,27 +1,12 @@
 import React from "react";
 import { TFile } from "obsidian";
-import { TableColumn } from "cdm/FolderModel";
 import { CellComponentProps } from "cdm/ComponentsModel";
-import { ParseService } from "services/ParseService";
-import { InputType } from "helpers/Constants";
 
-function ImageCell(props: CellComponentProps) {
+const ImageCell = React.memo(function ImageCell(props: CellComponentProps) {
   const { defaultCell } = props;
-  const { row, column, table } = defaultCell;
-  const { tableState } = table.options.meta;
-  const tableColumn = column.columnDef as TableColumn;
-  const configInfo = tableState.configState((state) => state.info);
+  const { table } = defaultCell;
   const view = table.options.meta.view;
-
-  const cellValue = tableState.data(
-    (state) =>
-      ParseService.parseRowToCell(
-        state.rows[row.index],
-        tableColumn,
-        InputType.TEXT,
-        configInfo.getLocalSettings()
-      ) as string
-  );
+  const cellValue = defaultCell.getValue() as string | undefined;
 
   if (!cellValue) {
     return <span style={{ color: "var(--text-faint)", fontSize: "12px" }}>无图片</span>;
@@ -46,6 +31,6 @@ function ImageCell(props: CellComponentProps) {
   }
 
   return <span style={{ color: "var(--text-error)", fontSize: "12px" }}>路径无效</span>;
-}
+});
 
 export default ImageCell;

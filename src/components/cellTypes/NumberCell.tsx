@@ -1,6 +1,6 @@
 import { CellComponentProps } from "cdm/ComponentsModel";
 import { TableColumn } from "cdm/FolderModel";
-import { InputType, SUGGESTER_REGEX } from "helpers/Constants";
+import { SUGGESTER_REGEX } from "helpers/Constants";
 import { c, getAlignmentClassname } from "helpers/StylesHelper";
 import React, {
   ChangeEventHandler,
@@ -9,72 +9,51 @@ import React, {
 } from "react";
 import { ParseService } from "services/ParseService";
 
-const NumberCell = (props: CellComponentProps) => {
+const NumberCell = React.memo(function NumberCell(props: CellComponentProps) {
   const { defaultCell } = props;
   const { row, column, table } = defaultCell;
   const { tableState } = table.options.meta;
   const tableColumn = column.columnDef as TableColumn;
-  /** Cell information */
-  const columnsInfo = tableState.columns((state) => state.info);
-  const dataActions = tableState.data((state) => state.actions);
-  const configInfo = tableState.configState((state) => state.info);
-  const numberRow = tableState.data((state) => state.rows[row.index]);
-  const numberCell = tableState.data(
-    (state) =>
-      ParseService.parseRowToCell(
-        state.rows[row.index],
-        tableColumn,
-        InputType.NUMBER,
-        configInfo.getLocalSettings()
-      ) as number
-  );
-  const [editableValue, setEditableValue] = useState(null);
+
+  const numberCell = defaultCell.getValue() as number;
+  const [editableValue, setEditableValue] = useState<string | null>(null);
   const [dirtyCell, setDirtyCell] = useState(false);
+
+  const localSettings = tableState.configState.getState().info.getLocalSettings();
 
   const handleEditableOnclick = () => {
     setDirtyCell(true);
-    setEditableValue(numberCell);
+    setEditableValue(numberCell?.toString() ?? "");
   };
 
-  // onChange handler
   const handleOnChange: ChangeEventHandler<HTMLInputElement> = (event) => {
-    // parse value to number
     setEditableValue(event.target.value);
   };
 
   async function persistChange(changedValue: number) {
-    const newCell = ParseService.parseRowToLiteral(
-      numberRow,
-      tableColumn,
-      changedValue
-    );
-
+    const store = tableState.data.getState();
+    const dataActions = tableState.data.getState().actions;
+    const numberRow = tableState.data.getState().rows[row.index];
+    const newCell = ParseService.parseRowToLiteral(numberRow, tableColumn, changedValue);
     await dataActions.updateCell({
       rowIndex: row.index,
       column: tableColumn,
       value: newCell,
-      columns: columnsInfo.getAllColumns(),
-      ddbbConfig: configInfo.getLocalSettings(),
+      columns: tableState.columns.getState().info.getAllColumns(),
+      ddbbConfig: tableState.configState.getState().info.getLocalSettings(),
     });
   }
 
-  const handleKeyDown: KeyboardEventHandler<HTMLInputElement> = (
-    event: any
-  ) => {
-    switch (event.key) {
-      case "Enter":
-        event.target.blur();
-        break;
-      case "Escape":
-        setDirtyCell(false);
-        break;
-      default:
-      // Do nothing
+  const handleKeyDown: KeyboardEventHandler<HTMLInputElement> = (event) => {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+    } else if (event.key === "Escape") {
+      setDirtyCell(false);
     }
   };
 
   const handleOnBlur = async () => {
-    if (editableValue && editableValue !== numberCell) {
+    if (editableValue !== null && parseFloat(editableValue) !== numberCell) {
       await persistChange(parseFloat(editableValue));
     }
     setDirtyCell(false);
@@ -83,23 +62,15 @@ const NumberCell = (props: CellComponentProps) => {
   return dirtyCell ? (
     <input
       autoFocus
-      value={(editableValue && editableValue.toString()) || ""}
+      value={editableValue ?? ""}
       onChange={handleOnChange}
       onKeyDown={handleKeyDown}
       onBlur={handleOnBlur}
-      className={c(
-        getAlignmentClassname(tableColumn.config, configInfo.getLocalSettings())
-      )}
+      className={c(getAlignmentClassname(tableColumn.config, localSettings))}
     />
   ) : (
     <span
-      className={c(
-        getAlignmentClassname(
-          tableColumn.config,
-          configInfo.getLocalSettings(),
-          ["tabIndex"]
-        )
-      )}
+      className={c(getAlignmentClassname(tableColumn.config, localSettings, ["tabIndex"]))}
       onDoubleClick={handleEditableOnclick}
       style={{ width: column.getSize() }}
       onKeyDown={(e) => {
@@ -115,6 +86,6 @@ const NumberCell = (props: CellComponentProps) => {
       {isNaN(numberCell) ? "" : numberCell}
     </span>
   );
-};
+});
 
 export default NumberCell;
