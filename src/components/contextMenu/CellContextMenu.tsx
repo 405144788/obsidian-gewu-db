@@ -57,13 +57,14 @@ export default function CellContextMenu(
     );
   };
 
-  // Compute display row number from pagination state (indexOf has reference mismatch bug)
+  // Match by row.id (not reference) to avoid indexOf returning -1
+  const flatRows = table.getRowModel().rows;
+  const pageLocalIndex = flatRows.findIndex(r => r.id === row.id);
   const pageIndex = table.getState().pagination.pageIndex;
   const pageSize = table.getState().pagination.pageSize;
-  const pageLocalIndex = table.getPaginationRowModel().rows.indexOf(row);
   const index = pageLocalIndex >= 0
     ? pageIndex * pageSize + pageLocalIndex + 1
-    : row.index + 1; // fallback
+    : 1;
 
   return (
     <>

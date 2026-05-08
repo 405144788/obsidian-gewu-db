@@ -114,12 +114,15 @@ export function Table(tableData: TableDataType) {
     targetColumnId: string,
     columnOrder: string[]
   ): ColumnOrderState => {
-    columnOrder.splice(
-      columnOrder.indexOf(targetColumnId),
-      0,
-      columnOrder.splice(columnOrder.indexOf(draggedColumnId), 1)[0] as string
-    );
-    return [...columnOrder];
+    // Build new array — never mutate React state
+    const newOrder = [...columnOrder];
+    const draggedIdx = newOrder.indexOf(draggedColumnId);
+    const targetIdx = newOrder.indexOf(targetColumnId);
+    if (draggedIdx === -1 || targetIdx === -1) return columnOrder;
+    newOrder.splice(draggedIdx, 1);
+    const adjustedTarget = targetIdx > draggedIdx ? targetIdx - 1 : targetIdx;
+    newOrder.splice(adjustedTarget, 0, columnOrder[draggedIdx]);
+    return newOrder;
   };
   // Niveling number of columns
   if (columnOrder.length !== columns.length) {
