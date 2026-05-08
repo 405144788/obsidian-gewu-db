@@ -2,6 +2,7 @@ import { RowDataType, NormalizedPath, TableColumn } from 'cdm/FolderModel';
 import { Notice, TFile } from 'obsidian';
 import { LOGGER } from "services/Logger";
 import NoteInfo from 'services/NoteInfo';
+import { RowCacheService } from 'services/RowCacheService';
 import { DatabaseCore, SourceDataTypes } from "helpers/Constants";
 import { generateDataviewTableQuery } from 'helpers/QueryHelper';
 import { DataviewService } from 'services/DataviewService';
@@ -80,18 +81,56 @@ export async function adapterTFilesToRows(dbFile: TFile, columns: TableColumn[],
   LOGGER.debug(`=> adapterTFilesToRows.  folderPath:${folderPath}`);
   const rows: Array<RowDataType> = [];
 
+  // Init cache for this database
+  RowCacheService.init(dbFile.path);
+
   let folderFiles = await sourceDataviewPages(ddbbConfig, folderPath, columns);
   folderFiles = folderFiles.where((p: NoteInfoPage) => p.file.path !== dbFile.path);
   // Config filters asociated with the database
   if (filters.enabled && filters.conditions.length > 0) {
     folderFiles = folderFiles.where(p => tableFilter(filters.conditions, p, ddbbConfig));
   }
-  folderFiles.map((page: NoteInfoPage) => {
-    const noteInfo = new NoteInfo(page);
-    rows.push(noteInfo.getRowDataType(columns));
-  });
 
-  LOGGER.debug(`<= adapterTFilesToRows.  number of rows:${rows.length}`);
+  const pagesArray = folderFiles.values as NoteInfoPage[];
+  const cachedRows = new Map<NoteInfoPage, RowDataType>();
+  const uncachedPages: NoteInfoPage[] = [];
+
+  // Check cache first
+  for (const page of pagesArray) {
+    const mtime = page.file.mtime?.valueOf() ?? 0;
+    const cached = RowCacheService.get(page.file.path, mtime);
+    if (cached) {
+      cachedRows.set(page, cached);
+    } else {
+      uncachedPages.push(page);
+    }
+  }
+
+  // Process uncached in parallel batches (yield to UI between batches)
+  const BATCH_SIZE = 32;
+  for (let i = 0; i < uncachedPages.length; i += BATCH_SIZE) {
+    const batch = uncachedPages.slice(i, i + BATCH_SIZE);
+    await new Promise<void>(resolve => {
+      setTimeout(async () => {
+        for (const page of batch) {
+          const noteInfo = new NoteInfo(page);
+          const rowData = noteInfo.getRowDataType(columns);
+          const mtime = page.file.mtime?.valueOf() ?? 0;
+          RowCacheService.set(page.file.path, mtime, rowData);
+          cachedRows.set(page, rowData);
+        }
+        resolve();
+      }, 0);
+    });
+  }
+
+  // Assemble final rows (preserving original order)
+  for (const page of pagesArray) {
+    const row = cachedRows.get(page);
+    if (row) rows.push(row);
+  }
+
+  LOGGER.debug(`<= adapterTFilesToRows.  number of rows:${rows.length} (cached: ${pagesArray.length - uncachedPages.length}, parsed: ${uncachedPages.length})`);
   return rows;
 }
 
