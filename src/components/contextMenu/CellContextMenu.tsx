@@ -57,7 +57,13 @@ export default function CellContextMenu(
     );
   };
 
-  const index = table.getRowModel().flatRows.indexOf(row) + 1;
+  // Compute display row number from pagination state (indexOf has reference mismatch bug)
+  const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
+  const pageLocalIndex = table.getPaginationRowModel().rows.indexOf(row);
+  const index = pageLocalIndex >= 0
+    ? pageIndex * pageSize + pageLocalIndex + 1
+    : row.index + 1; // fallback
 
   return (
     <>
