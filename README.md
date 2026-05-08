@@ -63,8 +63,7 @@ A Notion-like database plugin for Obsidian. Display markdown notes as sortable, 
 
 | Version | Feature |
 |---------|---------|
-| **3.5.2** | 🖼️ **Image column** — `input: image` type, displays 60×60 thumbnails with vault path resolution |
-| **3.5.3** | 📁 **Specified folder source** — Place database file anywhere, pick data source folder via UI |
+| **1.0.0** | 🖼️ **Image column** + 📁 **Specified folder source** — First official release, rebuilt from upstream 3.5.x |
 
 ## Installation
 
