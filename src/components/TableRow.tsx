@@ -6,7 +6,7 @@ import React, { CSSProperties } from "react";
 import { MdFileComponent } from "components/obsidianArq/embedMdInteractive";
 import { TableRowProps } from "cdm/RowTypeModel";
 
-function TableRowInner(tableRowProps: TableRowProps) {
+export default function TableRow(tableRowProps: TableRowProps) {
   const { row, table } = tableRowProps;
   const { view, tableState } = table.options.meta;
 
@@ -70,6 +70,3 @@ function TableRowInner(tableRowProps: TableRowProps) {
     </>
   );
 }
-
-const TableRow = React.memo(TableRowInner);
-export default TableRow;

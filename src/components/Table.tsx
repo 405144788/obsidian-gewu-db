@@ -254,7 +254,7 @@ export function Table(tableData: TableDataType) {
               );
             })}
           </div>
-          <div key={`div-tbody`} className={c(`tbody`)}>
+          <div key={`div-tbody-${columnOrder.join('-')}`} className={c(`tbody`)}>
             {table.getRowModel().rows.map((row: Row<RowDataType>) => (
               <TableRow key={`table-cell-${row.index}`} row={row} table={table} />
             ))}
