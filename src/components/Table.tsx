@@ -216,7 +216,6 @@ export function Table(tableData: TableDataType) {
 
   // Virtual scrolling setup
   const tbodyRef = useRef<HTMLDivElement>(null);
-  const [scrollbarWidth, setScrollbarWidth] = useState(0);
   const rowCount = table.getRowModel().rows.length;
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
@@ -224,13 +223,6 @@ export function Table(tableData: TableDataType) {
     estimateSize: () => cell_size_config === "compact" ? 32 : cell_size_config === "small" ? 40 : 56,
     overscan: 5,
   });
-
-  React.useEffect(() => {
-    if (tbodyRef.current) {
-      const sbWidth = tbodyRef.current.offsetWidth - tbodyRef.current.clientWidth;
-      if (sbWidth > 0) setScrollbarWidth(sbWidth);
-    }
-  }, [rowCount]);
 
   return (
     <>
@@ -242,113 +234,83 @@ export function Table(tableData: TableDataType) {
           setGlobalFilter: setGlobalFilter,
         }}
       />
-      {/* INIT SCROLL PANE */}
-      <div ref={tbodyRef} className={c("scroll-container scroll-horizontal")} style={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}>
-        {/* INIT TABLE */}
+      {/* TABLE HEADER - outside scroll container for proper alignment */}
+      <div
+        key={`div-thead`}
+        className={`${c("thead")} ${c("noselect")}`}
+        style={{
+          overflow: "hidden",
+          width: "100%",
+        }}
+        ref={(el) => {
+          if (el && tbodyRef.current) {
+            el.scrollLeft = tbodyRef.current.scrollLeft;
+          }
+        }}
+      >
+        <div style={{ width: table.getCenterTotalSize() }}>
+          {table.getHeaderGroups().map((headerGroup, headerGroupIndex) => {
+            const headerContext = headerGroup.headers.find(h => h.id === MetadataColumns.ROW_CONTEXT_MENU);
+            const addColumnHeader = headerGroup.headers.find(h => h.id === MetadataColumns.ADD_COLUMN);
+            return (
+              <div key={`header-group-${headerGroup.id}`} className={`${c("tr header-group")}`}>
+                <HeaderContextMenuWrapper header={headerContext} style={{ width: "30px" }} />
+                {headerGroup.headers
+                  .filter(h => ![headerContext.id, addColumnHeader.id].includes(h.id))
+                  .map((header: Header<RowDataType, TableColumn>, headerIndex: number) => (
+                    <TableHeader
+                      key={`${header.id}-${headerIndex}`}
+                      table={table}
+                      header={header}
+                      reorderColumn={reorderColumn}
+                      headerIndex={headerIndex + 1}
+                    />
+                  ))}
+                <HeaderContextMenuWrapper header={addColumnHeader} style={{ width: "45px" }} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SCROLL BODY - virtualized */}
+      <div
+        ref={tbodyRef}
+        className={c("scroll-container scroll-horizontal")}
+        style={{ maxHeight: "calc(100vh - 250px)", overflow: "auto" }}
+        onScroll={(e) => {
+          // Sync header horizontal scroll with body
+          const headerEl = e.currentTarget.previousElementSibling as HTMLDivElement;
+          if (headerEl) headerEl.scrollLeft = e.currentTarget.scrollLeft;
+        }}
+        onMouseOver={obsidianMdLinksOnMouseOverMenuCallback(view)}
+        onMouseDown={obsidianMdLinksOnClickCallback(stateManager, view, filePath)}
+        onKeyDown={onKeyDownArrowKeys}
+      >
         <div
-          key={`div-table`}
-          className={`${c(
-            "table noselect cell_size_" +
-              cell_size_config +
-              (sticky_first_column_config ? " sticky_first_column" : "")
-          )}`}
-          /** Obsidian event to show page preview */
-          onMouseOver={obsidianMdLinksOnMouseOverMenuCallback(view)}
-          /** Obsidian to open an internal link in a new pane */
-          onMouseDown={obsidianMdLinksOnClickCallback(stateManager, view, filePath)}
-          onKeyDown={onKeyDownArrowKeys}
-          style={{
-            width: table.getCenterTotalSize(),
-          }}
+          className={`${c("table noselect cell_size_" + cell_size_config + (sticky_first_column_config ? " sticky_first_column" : ""))}`}
+          style={{ width: table.getCenterTotalSize() }}
         >
-          <div key={`div-thead-sticky`} className={c(`thead sticky-top`)} style={{ paddingRight: `${scrollbarWidth}px` }}>
-            {/* INIT HEADERS */}
-            {table
-              .getHeaderGroups()
-              .map(
-                (
-                  headerGroup: HeaderGroup<RowDataType>,
-                  headerGroupIndex: number
-                ) => {
-                  const headerContext = headerGroup.headers.find(
-                    (h) => h.id === MetadataColumns.ROW_CONTEXT_MENU
-                  );
-                  const addColumnHeader = headerGroup.headers.find(
-                    (h) => h.id === MetadataColumns.ADD_COLUMN
-                  );
-                  return (
-                    <div
-                      key={`header-group-${headerGroup.id}-${headerGroupIndex}`}
-                      className={`${c("tr header-group")}`}
-                    >
-                      {/** HEADER CONTEXT */}
-                      <HeaderContextMenuWrapper
-                        header={headerContext}
-                        style={{
-                          width: "30px",
-                        }}
-                      />
-                      {/** LIST OF COLUMNS */}
-                      {headerGroup.headers
-                        .filter(
-                          (h) =>
-                            ![headerContext.id, addColumnHeader.id].includes(
-                              h.id
-                            )
-                        )
-                        .map(
-                          (
-                            header: Header<RowDataType, TableColumn>,
-                            headerIndex: number
-                          ) => (
-                            <TableHeader
-                              key={`${header.id}-${headerIndex}`}
-                              table={table}
-                              header={header}
-                              reorderColumn={reorderColumn}
-                              headerIndex={headerIndex + 1}
-                            />
-                          )
-                        )}
-                      {/** ADD COLUMN HEADER */}
-                      <HeaderContextMenuWrapper
-                        header={addColumnHeader}
-                        style={{
-                          width: "45px",
-                        }}
-                      />
-                    </div>
-                  );
-                }
-              )}
-            {/* ENDS HEADERS */}
-          </div>
-          {/* INIT BODY - Virtualized */}
-          <div key={`div-tbody`} className={c(`tbody`)}>
+          <div className={c(`tbody`)}>
             <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const row = table.getRowModel().rows[virtualRow.index];
                 return (
                   <div
-                    key={`virtual-row-${virtualRow.key}`}
+                    key={`vr-${virtualRow.key}`}
                     style={{
                       position: "absolute",
                       top: 0,
                       left: 0,
+                      width: "100%",
                       transform: `translateY(${virtualRow.start}px)`,
-                      width: table.getCenterTotalSize(),
                     }}
                   >
-                    <TableRow
-                      key={`table-cell-${row.index}`}
-                      row={row}
-                      table={table}
-                    />
+                    <TableRow row={row} table={table} />
                   </div>
                 );
               })}
             </div>
-            {/* ENDS BODY */}
           </div>
           {/* INIT FOOTER */}
           <div key={`div-tfoot`} className={c(`tfoot`)}>
