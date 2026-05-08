@@ -216,6 +216,7 @@ export function Table(tableData: TableDataType) {
 
   // Virtual scrolling setup
   const tbodyRef = useRef<HTMLDivElement>(null);
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
   const rowCount = table.getRowModel().rows.length;
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
@@ -223,6 +224,13 @@ export function Table(tableData: TableDataType) {
     estimateSize: () => cell_size_config === "compact" ? 32 : cell_size_config === "small" ? 40 : 56,
     overscan: 5,
   });
+
+  React.useEffect(() => {
+    if (tbodyRef.current) {
+      const sbWidth = tbodyRef.current.offsetWidth - tbodyRef.current.clientWidth;
+      if (sbWidth > 0) setScrollbarWidth(sbWidth);
+    }
+  }, [rowCount]);
 
   return (
     <>
@@ -235,7 +243,7 @@ export function Table(tableData: TableDataType) {
         }}
       />
       {/* INIT SCROLL PANE */}
-      <div ref={tbodyRef} className={c("scroll-container scroll-horizontal")} style={{ maxHeight: "calc(100vh - 200px)", overflow: "auto", scrollbarGutter: "stable" }}>
+      <div ref={tbodyRef} className={c("scroll-container scroll-horizontal")} style={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}>
         {/* INIT TABLE */}
         <div
           key={`div-table`}
@@ -253,7 +261,7 @@ export function Table(tableData: TableDataType) {
             width: table.getCenterTotalSize(),
           }}
         >
-          <div key={`div-thead-sticky`} className={c(`thead sticky-top`)}>
+          <div key={`div-thead-sticky`} className={c(`thead sticky-top`)} style={{ paddingRight: `${scrollbarWidth}px` }}>
             {/* INIT HEADERS */}
             {table
               .getHeaderGroups()
