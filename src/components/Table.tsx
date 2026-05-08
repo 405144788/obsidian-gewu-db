@@ -39,7 +39,8 @@ import customSortingfns, {
   globalDatabaseFilterFn,
 } from "components/reducers/TableFilterFlavours";
 import dbfolderColumnSortingFn from "components/reducers/CustomSortingFn";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   obsidianMdLinksOnClickCallback,
   obsidianMdLinksOnMouseOverMenuCallback,
@@ -213,6 +214,16 @@ export function Table(tableData: TableDataType) {
     rowsActions.insertRows();
   }, []);
 
+  // Virtual scrolling setup
+  const tbodyRef = useRef<HTMLDivElement>(null);
+  const rowCount = table.getRowModel().rows.length;
+  const rowVirtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => tbodyRef.current,
+    estimateSize: () => cell_size_config === "compact" ? 32 : cell_size_config === "small" ? 40 : 56,
+    overscan: 5,
+  });
+
   return (
     <>
       <HeaderNavBar
@@ -304,15 +315,30 @@ export function Table(tableData: TableDataType) {
               )}
             {/* ENDS HEADERS */}
           </div>
-          {/* INIT BODY */}
-          <div key={`div-tbody`} className={c(`tbody`)}>
-            {table.getRowModel().rows.map((row: Row<RowDataType>) => (
-              <TableRow
-                key={`table-cell-${row.index}`}
-                row={row}
-                table={table}
-              />
-            ))}
+          {/* INIT BODY - Virtualized */}
+          <div key={`div-tbody`} ref={tbodyRef} className={c(`tbody`)} style={{ overflow: "auto" }}>
+            <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = table.getRowModel().rows[virtualRow.index];
+                return (
+                  <div
+                    key={`virtual-row-${virtualRow.key}`}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      transform: `translateY(${virtualRow.start}px)`,
+                      width: "100%",
+                    }}
+                  >
+                    <TableRow
+                      key={`table-cell-${row.index}`}
+                      row={row}
+                      table={table}
+                    />
+                  </div>
+                );
+              })}
+            </div>
             {/* ENDS BODY */}
           </div>
           {/* INIT FOOTER */}
