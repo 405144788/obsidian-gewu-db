@@ -403,6 +403,7 @@ div.database-plugin__td.data-input span:focus {
   display: table-cell;
   padding: 0.5rem;
   flex-direction: column;
+  contain: layout style paint;
 }
 
 .database-plugin__expanded-td {
