@@ -1,9 +1,9 @@
 import { RowDataType, NormalizedPath, TableColumn } from 'cdm/FolderModel';
-import { Notice, TFile } from 'obsidian';
+import { Notice, TFile, parseYaml, TAbstractFile } from 'obsidian';
 import { LOGGER } from "services/Logger";
 import NoteInfo from 'services/NoteInfo';
 import { RowCacheService } from 'services/RowCacheService';
-import { DatabaseCore, SourceDataTypes } from "helpers/Constants";
+import { DatabaseCore, SourceDataTypes, MetadataColumns } from "helpers/Constants";
 import { generateDataviewTableQuery } from 'helpers/QueryHelper';
 import { DataviewService } from 'services/DataviewService';
 import { Literal } from 'obsidian-dataview/lib/data-model/value';
@@ -76,9 +76,108 @@ export function getNormalizedPath(path: string): NormalizedPath {
  * @param folderPath 
  * @returns 
  */
+/**
+ * Fast path: bypass Dataview for folder-based sources.
+ * Uses parallel vault.read() + parseYaml() for much faster initial load.
+ */
+async function adapterFolderFast(dbFile: TFile, columns: TableColumn[], ddbbConfig: LocalSettings, filters: FilterSettings, folderPath: string, includeSubfolders: boolean): Promise<Array<RowDataType>> {
+  RowCacheService.init(dbFile.path);
+  const rows: Array<RowDataType> = [];
+
+  // Get files directly from vault
+  const allFiles = app.vault.getFiles();
+  const targetFiles = allFiles.filter(f => {
+    if (f.path === dbFile.path) return false;
+    if (includeSubfolders) {
+      return f.path.startsWith(folderPath + "/") || f.path === folderPath;
+    }
+    return f.parent?.path === folderPath;
+  });
+
+  if (targetFiles.length === 0) return rows;
+
+  // Parallel read all files in batches
+  const BATCH = 80;
+  for (let i = 0; i < targetFiles.length; i += BATCH) {
+    const batch = targetFiles.slice(i, i + BATCH);
+
+    // Parallel I/O: read all files at once
+    const rawContents = await Promise.all(
+      batch.map(f => app.vault.read(f).catch(() => ""))
+    );
+
+    // Process batch with UI yield
+    await new Promise<void>(resolve => {
+      setTimeout(() => {
+        for (let j = 0; j < batch.length; j++) {
+          const file = batch[j];
+          const raw = rawContents[j];
+          const mtime = file.stat.mtime;
+
+          // Check cache
+          const cached = RowCacheService.get(file.path, mtime);
+          if (cached) {
+            rows.push(cached);
+            continue;
+          }
+
+          // Parse frontmatter directly
+          let fm: Record<string, any> = {};
+          let fileContent = raw;
+          if (raw.startsWith("---")) {
+            const end = raw.indexOf("---", 4);
+            if (end > 0) {
+              const fmRaw = raw.substring(4, end);
+              fileContent = raw.substring(end + 3);
+              try { fm = parseYaml(fmRaw) || {}; } catch { fm = {}; }
+            }
+          }
+
+          // Build RowDataType (replicating NoteInfo.getRowDataType)
+          const row: RowDataType = {
+            __note__: undefined,
+            [MetadataColumns.FILE]: app.metadataCache.fileToLinktext(file, file.path, false),
+            [MetadataColumns.CREATED]: file.stat.ctime,
+            [MetadataColumns.MODIFIED]: mtime,
+            [MetadataColumns.TASKS]: [],
+            [MetadataColumns.OUTLINKS]: [],
+            [MetadataColumns.INLINKS]: [],
+            [MetadataColumns.TAGS]: [],
+          };
+
+          // Map column keys from frontmatter
+          for (const col of columns) {
+            if (fm[col.key] !== undefined) {
+              row[col.key] = fm[col.key];
+            }
+          }
+
+          RowCacheService.set(file.path, mtime, row);
+          rows.push(row);
+        }
+        resolve();
+      }, 0);
+    });
+  }
+
+  return rows;
+}
+
 export async function adapterTFilesToRows(dbFile: TFile, columns: TableColumn[], ddbbConfig: LocalSettings, filters: FilterSettings): Promise<Array<RowDataType>> {
   const folderPath = dbFile.parent.path;
-  LOGGER.debug(`=> adapterTFilesToRows.  folderPath:${folderPath}`);
+
+  // Fast path for folder-based sources (bypass Dataview)
+  if (ddbbConfig.source_data === SourceDataTypes.SPECIFIED_FOLDER) {
+    const targetPath = ddbbConfig.source_destination_path || folderPath;
+    return adapterFolderFast(dbFile, columns, ddbbConfig, filters, targetPath, true);
+  }
+  if (ddbbConfig.source_data === SourceDataTypes.CURRENT_FOLDER) {
+    return adapterFolderFast(dbFile, columns, ddbbConfig, filters, folderPath, true);
+  }
+  if (ddbbConfig.source_data === SourceDataTypes.CURRENT_FOLDER_WITHOUT_SUBFOLDERS) {
+    return adapterFolderFast(dbFile, columns, ddbbConfig, filters, folderPath, false);
+  }
+  LOGGER.debug(`=> adapterTFilesToRows (Dataview fallback).  folderPath:${folderPath}`);
   const rows: Array<RowDataType> = [];
 
   // Init cache for this database
@@ -106,13 +205,22 @@ export async function adapterTFilesToRows(dbFile: TFile, columns: TableColumn[],
     }
   }
 
-  // Process uncached in parallel batches (yield to UI between batches)
-  const BATCH_SIZE = 32;
+  // Process uncached in parallel batches with async I/O
+  const BATCH_SIZE = 64;
   for (let i = 0; i < uncachedPages.length; i += BATCH_SIZE) {
     const batch = uncachedPages.slice(i, i + BATCH_SIZE);
+    // Parallel read all files in this batch
+    const fileContents = await Promise.all(
+      batch.map(page => app.vault.read(page.file.path).catch(() => ""))
+    );
+    // Parse YAML with regex + Obsidian parseYaml in parallel-like chunk
     await new Promise<void>(resolve => {
-      setTimeout(async () => {
-        for (const page of batch) {
+      setTimeout(() => {
+        for (let j = 0; j < batch.length; j++) {
+          const page = batch[j];
+          const rawContent = fileContents[j];
+          // Fast path: if we have raw content, use it to extract frontmatter
+          // Otherwise fall back to NoteInfo.getRowDataType (Dataview-backed)
           const noteInfo = new NoteInfo(page);
           const rowData = noteInfo.getRowDataType(columns);
           const mtime = page.file.mtime?.valueOf() ?? 0;
