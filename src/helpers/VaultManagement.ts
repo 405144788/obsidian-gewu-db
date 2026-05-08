@@ -92,60 +92,42 @@ async function adapterFolderFast(dbFile: TFile, columns: TableColumn[], ddbbConf
 
   if (targetFiles.length === 0) return rows;
 
-  // Read files in parallel batches. Too few batches = I/O contention in Obsidian;
-  // too many = overhead. 150 concurrent reads balances both.
-  const BATCH = 150;
-  for (let i = 0; i < targetFiles.length; i += BATCH) {
-    const batch = targetFiles.slice(i, i + BATCH);
-    const rawContents = await Promise.all(
-      batch.map(f => app.vault.read(f).catch(() => ""))
-    );
+  // Use app.metadataCache frontmatter (pre-parsed, in-memory) — no disk I/O needed
+  for (const file of targetFiles) {
+    const mtime = file.stat.mtime;
 
-    // Process inline — no setTimeout, just raw speed
-    for (let j = 0; j < batch.length; j++) {
-      const file = batch[j];
-      const raw = rawContents[j];
-      const mtime = file.stat.mtime;
-
-      // Check cache
-      const cached = RowCacheService.get(file.path, mtime);
-      if (cached) {
-        rows.push(cached);
-        continue;
-      }
-
-      // Parse frontmatter directly
-      let fm: Record<string, any> = {};
-      if (raw.startsWith("---")) {
-        const end = raw.indexOf("---", 4);
-        if (end > 0) {
-          const fmRaw = raw.substring(4, end);
-          try { fm = parseYaml(fmRaw) || {}; } catch { fm = {}; }
-        }
-      }
-
-      // Build RowDataType
-      const row: RowDataType = {
-        __note__: undefined,
-        [MetadataColumns.FILE]: app.metadataCache.fileToLinktext(file, file.path, false),
-        [MetadataColumns.CREATED]: file.stat.ctime,
-        [MetadataColumns.MODIFIED]: mtime,
-        [MetadataColumns.TASKS]: [],
-        [MetadataColumns.OUTLINKS]: [],
-        [MetadataColumns.INLINKS]: [],
-        [MetadataColumns.TAGS]: [],
-      };
-
-      // Map column keys from frontmatter
-      for (const col of columns) {
-        if (fm[col.key] !== undefined) {
-          row[col.key] = fm[col.key];
-        }
-      }
-
-      RowCacheService.set(file.path, mtime, row);
-      rows.push(row);
+    // Check cache
+    const cached = RowCacheService.get(file.path, mtime);
+    if (cached) {
+      rows.push(cached);
+      continue;
     }
+
+    // Get frontmatter from Obsidian's own metadata cache (already parsed)
+    const fileCache = app.metadataCache.getFileCache(file);
+    const fm: Record<string, any> = (fileCache?.frontmatter as Record<string, any>) || {};
+
+    // Build RowDataType
+    const row: RowDataType = {
+      __note__: undefined,
+      [MetadataColumns.FILE]: app.metadataCache.fileToLinktext(file, file.path, false),
+      [MetadataColumns.CREATED]: file.stat.ctime,
+      [MetadataColumns.MODIFIED]: mtime,
+      [MetadataColumns.TASKS]: [],
+      [MetadataColumns.OUTLINKS]: [],
+      [MetadataColumns.INLINKS]: [],
+      [MetadataColumns.TAGS]: [],
+    };
+
+    // Map column keys from frontmatter
+    for (const col of columns) {
+      if (fm[col.key] !== undefined) {
+        row[col.key] = fm[col.key];
+      }
+    }
+
+    RowCacheService.set(file.path, mtime, row);
+    rows.push(row);
   }
 
   return rows;
